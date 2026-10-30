@@ -88,7 +88,8 @@ button, input, select, textarea { font:inherit; }
 .post-card p { margin:0; color:var(--muted); font-size:13px; line-height:1.6; }
 .post-card > svg { align-self:flex-end; flex:0 0 auto; color:var(--green); }
 .footer-social-links { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
-.footer-social-links a:first-child { color:var(--green); font-weight:800; }
+.footer-social-links a:first-child { display:inline-flex; align-items:center; gap:7px; color:var(--green); font-weight:800; }
+.facebook-icon { display:inline-grid; place-items:center; width:22px; height:22px; border-radius:6px; background:#1877f2; color:#fff; font-family:Arial,sans-serif; font-size:20px; font-weight:700; line-height:1; }
 .empty-posts { padding:22px; border:1px dashed var(--line); border-radius:14px; color:var(--muted); background:#fffaf2; }
 
 @media (max-width:800px) {
