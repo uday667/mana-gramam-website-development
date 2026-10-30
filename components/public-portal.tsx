@@ -9,6 +9,7 @@ const campaignBanner = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/
 const campaignLogo = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/images%20%283%29-SnlYTvEcjqSDMkslDA67c7VrUukXii.jpg'
 const supportLink = 'https://zptc-yours-sivanandhareddy.github.io/'
 const whatsappLink = 'https://chat.whatsapp.com/IqeoygzHvKaKFlJNN7BwVx'
+const facebookLink = 'https://facebook.com/sivanandha'
 
 type PortalPhoto = { src: string; alt: string; village: string; date: string; title?: string; detail?: string; purpose?: string; mediaType?: 'image' | 'video' }
 type LiveSchedule = { id: string; village: string; scheduled_date: string; title: string; purpose: string }
@@ -96,7 +97,7 @@ export default function PublicPortal() {
 
     
 
-    <footer className="portal-footer"><div className="portal-brand"><span className="fan-mark"><img src={campaignLogo} alt="ఫ్యాన్ ప్రచార లోగో" /></span><span><strong>మన గ్రామం</strong><small>MANA GRAMAM · NAARPALA</small></span></div><p>ప్రజలతో కలిసి, ప్రజల కోసం.<br />మన గ్రామం — మన బాధ్యత.</p><a href={whatsappLink} target="_blank" rel="noreferrer"><MessageCircle size={17} /> WhatsApp</a></footer>
+    <footer className="portal-footer"><div className="portal-brand"><span className="fan-mark"><img src={campaignLogo} alt="ఫ్యాన్ ప్రచార లోగో" /></span><span><strong>మన గ్రామం</strong><small>MANA GRAMAM · NAARPALA</small></span></div><p>ప్రజలతో కలిసి, ప్రజల కోసం.<br />మన గ్రామం — మన బాధ్యత.</p><div className="footer-social-links"><a href={facebookLink} target="_blank" rel="noreferrer">మరిన్ని అప్డేట్స్ కోసం Facebook చూడండి</a><a href={whatsappLink} target="_blank" rel="noreferrer"><MessageCircle size={17} /> WhatsApp</a></div></footer>
     {selectedPhoto && <div className="portal-modal" onClick={() => setSelectedPhoto(null)}><button onClick={() => setSelectedPhoto(null)} aria-label="Close"><X /></button>{selectedPhoto.mediaType === 'video' ? <video src={selectedPhoto.src} controls autoPlay playsInline aria-label={selectedPhoto.alt} /> : <img src={selectedPhoto.src} alt={selectedPhoto.alt} />}<p>{selectedPhoto.village} · {selectedPhoto.date}</p></div>}
     {selectedVisit && <div className="portal-modal visit-modal-new" onClick={() => setSelectedVisit(null)}><button onClick={() => setSelectedVisit(null)} aria-label="Close"><X /></button><div>{'mediaType' in selectedVisit && selectedVisit.mediaType === 'video' ? <video src={selectedVisit.src} controls autoPlay playsInline aria-label={selectedVisit.title ?? 'ప్రకటన వీడియో'} /> : <img src={'image' in selectedVisit ? selectedVisit.image : selectedVisit.src} alt={selectedVisit.title ?? 'ప్రజా ప్రకటన చిత్రం'} />}<span>{selectedVisit.date} · {selectedVisit.village}</span><h2>{selectedVisit.title}</h2><p>{selectedVisit.detail}</p></div></div>}
   </main>
