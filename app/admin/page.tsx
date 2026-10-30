@@ -49,7 +49,7 @@ export default function AdminPage() {
     const response = await fetch('/api/schedules', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ village: data.get('village'), date: data.get('date') }) })
     const result = await response.json() as { error?: string }
     setMessage(response.ok ? 'రేపటి ప్రయాణం సేవ్ అయింది.' : result.error ?? 'షెడ్యూల్ సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి.')
-    if (response.ok) form.reset()
+    if (response.ok) { form.reset(); window.location.assign('/') }
   }
 
   async function uploadPhotos(files: FileList | null) {
