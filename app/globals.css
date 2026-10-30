@@ -138,7 +138,14 @@ button, input, select, textarea { font:inherit; }
   .photo-post-form { margin-top:14px; padding-top:14px; border-top:1px solid #e6ded1; }
   .admin-toast { position:sticky; top:8px; z-index:20; margin-bottom:12px; }
   .calendar-layout { gap:14px; }
-  .calendar-card, .event-panel { border-radius:16px; padding:14px; }
+  .schedule-cards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:16px; }
+.schedule-card { display:flex; flex-direction:column; gap:8px; padding:18px; border:1px solid #cfe1f2; border-radius:18px; background:linear-gradient(145deg,#fff,#f2f8ff); box-shadow:0 10px 24px #173e6814; }
+.schedule-card-kicker { color:#1c8365; font-size:12px; font-weight:900; }
+.schedule-card strong { color:#173458; font-size:22px; }
+.schedule-card time { color:#71839a; font-size:13px; }
+.schedule-card p { margin:0; color:#64758a; font-size:14px; line-height:1.6; }
+.event-panel.multi-schedule { display:none; }
+.calendar-card, .event-panel { border-radius:16px; padding:14px; }
   .day-grid { gap:5px; }
   .day-grid button, .calendar-empty { min-height:40px; }
   .event-panel h3 { font-size:21px; }
