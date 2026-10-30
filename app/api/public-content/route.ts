@@ -14,7 +14,7 @@ export async function GET() {
     const paths = Array.from((record.description ?? '').matchAll(/storage:\/\/([^\s,]+)/g)).map(([, path]) => path)
     const signed = await Promise.all(paths.map(async (path) => (await supabase.storage.from('visit-photos').createSignedUrl(path, 3600)).data?.signedUrl))
     const lines = (record.description ?? '').split('\n').map((line) => line.trim()).filter(Boolean)
-    return { id: record.id, category: record.category, village: record.village, description: record.description, created_at: record.created_at, title: lines[0] ?? 'ప్రజా ప్రకటన', imageUrl: signed.find(Boolean) ?? null }
+    return { id: record.id, category: record.category, village: record.village, description: record.description, created_at: record.created_at, title: lines[0] ?? 'ప్రజా ప్రకటన', imageUrl: signed.find(Boolean) ?? null, mediaType: paths[0]?.toLowerCase().endsWith('.mp4') ? 'video' : 'image' }
   }))
 
   return NextResponse.json({ records: recordsWithImages, schedules })
