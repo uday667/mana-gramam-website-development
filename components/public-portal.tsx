@@ -9,16 +9,18 @@ const campaignBanner = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/
 const campaignLogo = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/images%20%283%29-SnlYTvEcjqSDMkslDA67c7VrUukXii.jpg'
 
 type PortalPhoto = { src: string; alt: string; village: string; date: string; title?: string; detail?: string; purpose?: string }
-type LiveContent = { photos: PortalPhoto[]; visits: PortalPhoto[] }
+type LiveSchedule = { id: string; village: string; scheduled_date: string; title: string; purpose: string }
+type LiveContent = { photos: PortalPhoto[]; visits: PortalPhoto[]; schedules: LiveSchedule[] }
 
 async function fetchLiveContent(): Promise<LiveContent> {
   const response = await fetch('/api/public-content', { cache: 'no-store' })
   if (!response.ok) throw new Error('Unable to load public content')
-  const records = await response.json() as Array<{ category: string; village: string; description: string; created_at: string; title: string; imageUrl: string | null }>
+  const payload = await response.json() as { records: Array<{ category: string; village: string; description: string; created_at: string; title: string; imageUrl: string | null }>; schedules: LiveSchedule[] }
+  const records = payload.records
   const toPhoto = (record: (typeof records)[number]): PortalPhoto => ({ src: record.imageUrl ?? campaignBanner, alt: record.title, village: record.village || 'నార్పల', date: new Intl.DateTimeFormat('te-IN', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(record.created_at)), title: record.title, purpose: record.category === 'visit_photos' ? 'ప్రజలతో ముఖాముఖి' : 'ప్రజా సమాచారం', detail: record.description.split('\n').slice(1).filter((line) => !line.startsWith('స్టోరేజ్:')).join(' ') || 'ప్రజల కోసం తాజా సమాచారం.' })
   const photoRecords = records.filter((record) => record.category === 'visit_photos').map(toPhoto)
   const announcementRecords = records.filter((record) => record.category === 'announcement').map(toPhoto)
-  return { photos: photoRecords, visits: [...photoRecords, ...announcementRecords].slice(0, 6) }
+  return { photos: photoRecords, visits: [...photoRecords, ...announcementRecords].slice(0, 6), schedules: payload.schedules ?? [] }
 }
 
 const photos = [
@@ -41,8 +43,6 @@ const priorities = [
   ['విద్యుత్ & లైట్లు', 'ప్రతి వీధికి వెలుగు, ప్రతి ఇంటికి భరోసా'],
 ]
 
-const monthDays = Array.from({ length: 30 }, (_, index) => index + 1)
-
 function Reveal({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return <motion.div className={className} initial={false} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.15 }} transition={{ duration: 0.45 }}>{children}</motion.div>
 }
@@ -54,11 +54,18 @@ export default function PublicPortal() {
   const { data: liveContent } = useSWR<LiveContent>('public-content', fetchLiveContent, { refreshInterval: 30000, revalidateOnFocus: true })
   const [selectedPhoto, setSelectedPhoto] = useState<PortalPhoto | null>(null)
   const [selectedVisit, setSelectedVisit] = useState<PortalPhoto | (typeof visits)[number] | null>(null)
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
   const [monthOffset, setMonthOffset] = useState(0)
-  const [selectedDay, setSelectedDay] = useState(4)
+  const [selectedDate, setSelectedDate] = useState(tomorrow.toISOString().slice(0, 10))
   const [postSent, setPostSent] = useState(false)
   const [galleryFilter, setGalleryFilter] = useState('అన్ని గ్రామాలు')
-  const month = monthOffset === 0 ? 'నవంబర్ 2026' : monthOffset < 0 ? 'అక్టోబర్ 2026' : 'డిసెంబర్ 2026'
+  const calendarDate = new Date(tomorrow.getFullYear(), tomorrow.getMonth() + monthOffset, 1)
+  const month = new Intl.DateTimeFormat(english ? 'en-US' : 'te-IN', { month: 'long', year: 'numeric' }).format(calendarDate)
+  const daysInMonth = new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 0).getDate()
+  const firstWeekday = calendarDate.getDay()
+  const scheduleByDate = new Map((liveContent?.schedules ?? []).map((schedule) => [schedule.scheduled_date, schedule]))
+  const selectedSchedule = scheduleByDate.get(selectedDate)
   const displayPhotos = liveContent?.photos.length ? liveContent.photos : photos
   const displayVisits = liveContent?.visits.length ? liveContent.visits : visits
   const filteredPhotos = useMemo(() => galleryFilter === 'అన్ని గ్రామాలు' ? displayPhotos : displayPhotos.filter((photo) => photo.village === galleryFilter), [displayPhotos, galleryFilter])
@@ -80,7 +87,7 @@ export default function PublicPortal() {
 
     <Reveal><section className="portal-section gallery-section-new" id="gallery"><div className="section-heading-row"><div className="section-intro"><span className="portal-kicker">{english ? 'FROM THE FIELD' : 'గ్రామాల నుంచి'}</span><h2>{t.gallery}</h2></div><div className="filter-pills">{['అన్ని గ్రామాలు', 'నార్పల'].map((filter) => <button className={galleryFilter === filter ? 'active' : ''} onClick={() => setGalleryFilter(filter)} key={filter}>{filter}</button>)}</div></div><div className="editorial-gallery">{filteredPhotos.map((photo, index) => <button key={`${photo.src}-${photo.village}-${photo.date}-${index}`} className={`gallery-photo photo-${index + 1}`} onClick={() => setSelectedPhoto(photo)}><img src={photo.src} alt={photo.alt} /><span>{photo.village} · {photo.date}</span></button>)}</div></section></Reveal>
 
-    <Reveal><section className="portal-section calendar-section" id="meetings"><div className="section-intro"><span className="portal-kicker">{english ? 'SCHEDULE' : 'క్యాలెండర్'}</span><h2>{t.calendar}</h2><p>{english ? 'See where the team is going tomorrow and plan your visit.' : 'మనం రేపు ఎక్కడికి వెళ్తాం?'}</p></div><div className="calendar-layout"><div className="calendar-card"><div className="calendar-top"><button onClick={() => setMonthOffset(monthOffset - 1)} aria-label="Previous month"><ChevronLeft /></button><strong>{month}</strong><button onClick={() => setMonthOffset(monthOffset + 1)} aria-label="Next month"><ChevronRight /></button></div><div className="weekday-row">{['ఆది', 'సోమ', 'మంగళ', 'బుధ', 'గురు', 'శుక్ర', 'శని'].map((day) => <span key={day}>{day}</span>)}</div><div className="day-grid">{monthDays.map((day) => <button className={`${[4, 8, 12, 18, 24].includes(day) ? 'has-event' : ''} ${selectedDay === day ? 'selected' : ''}`} onClick={() => setSelectedDay(day)} key={day}>{day}{[4, 8, 12, 18, 24].includes(day) && <i />}</button>)}</div></div><div className="event-panel"><h3>గ్రామం: నార్పల</h3><p>తేదీ: {selectedDay} {month}</p></div></div></section></Reveal>
+    <Reveal><section className="portal-section calendar-section" id="meetings"><div className="section-intro"><span className="portal-kicker">{english ? 'SCHEDULE' : 'క్యాలెండర్'}</span><h2>{t.calendar}</h2><p>{english ? 'See where the team is going tomorrow and plan your visit.' : 'మనం రేపు ఎక్కడికి వెళ్తాం?'}</p></div><div className="calendar-layout"><div className="calendar-card"><div className="calendar-top"><button onClick={() => setMonthOffset(monthOffset - 1)} aria-label="మునుపటి నెల"><ChevronLeft /></button><strong>{month}</strong><button onClick={() => setMonthOffset(monthOffset + 1)} aria-label="తదుపరి నెల"><ChevronRight /></button></div><div className="weekday-row">{(english ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] : ['ఆది', 'సోమ', 'మంగళ', 'బుధ', 'గురు', 'శుక్ర', 'శని']).map((day) => <span key={day}>{day}</span>)}</div><div className="day-grid">{Array.from({ length: firstWeekday }, (_, index) => <span className="calendar-empty" key={`empty-${index}`} />)}{Array.from({ length: daysInMonth }, (_, index) => index + 1).map((day) => { const isoDate = `${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; const hasEvent = scheduleByDate.has(isoDate); return <button className={`${hasEvent ? 'has-event' : ''} ${selectedDate === isoDate ? 'selected' : ''}`} onClick={() => setSelectedDate(isoDate)} key={isoDate}>{day}{hasEvent && <i />}</button> })}</div></div><div className={`event-panel ${selectedSchedule ? 'has-schedule' : ''}`}><span className="event-badge">{selectedSchedule ? 'సమావేశం' : 'షెడ్యూల్ లేదు'}</span><h3>గ్రామం: {selectedSchedule?.village ?? '—'}</h3><p>తేదీ: {new Intl.DateTimeFormat('te-IN', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(`${selectedDate}T12:00:00`))}</p>{selectedSchedule && <><strong>{selectedSchedule.title}</strong><small>{selectedSchedule.purpose}</small></>}</div></div></section></Reveal>
 
     
 
