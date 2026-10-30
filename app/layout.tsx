@@ -4,7 +4,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'మన గ్రామం | Mana Gramam',
-  description: 'కురగానిపల్లి జెడ్‌పిటిసి పరిధి ప్రజా సమాచారం, గ్రామ పర్యటనలు మరియు ప్రజా సేవా కార్యక్రమాలు.',
+  description: 'నార్పాల జెడ్‌పిటిసి పరిధి ప్రజా సమాచారం, ప్రకటనలు మరియు ప్రజా సేవా కార్యక్రమాలు.',
   generator: 'v0.app',
   icons: {
     icon: [
