@@ -68,6 +68,7 @@ export default function PublicPortal() {
   const month = new Intl.DateTimeFormat(english ? 'en-US' : 'te-IN', { month: 'long', year: 'numeric' }).format(calendarDate)
   const daysInMonth = new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 0).getDate()
   const firstWeekday = calendarDate.getDay()
+  const scheduleByDate = new Map((liveContent?.schedules ?? []).map((schedule) => [schedule.scheduled_date, schedule]))
   const schedulesForDate = (liveContent?.schedules ?? []).filter((schedule) => schedule.scheduled_date === selectedDate)
   const selectedSchedule = schedulesForDate.length ? { ...schedulesForDate[0], village: schedulesForDate.map((schedule) => schedule.village).join(' • ') } : undefined
   const displayPhotos = liveContent?.photos.length ? liveContent.photos : photos
