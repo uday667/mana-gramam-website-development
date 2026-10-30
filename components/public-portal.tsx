@@ -2,10 +2,35 @@
 
 import { motion } from 'framer-motion'
 import { useMemo, useState } from 'react'
+import useSWR from 'swr'
+import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { ArrowRight, CheckCircle2, ChevronLeft, ChevronRight, FileText, ImagePlus, Languages, MapPin, Menu, MessageCircle, Moon, ShieldCheck, Sun, Users, X } from 'lucide-react'
 
 const campaignBanner = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Airy%20Blue%20Fan%20Banner%20with%20Namaste%20Portraits-oDTKQlwKySm64uFWQxj9NUnTuZVkUe.png'
 const campaignLogo = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/images%20%283%29-SnlYTvEcjqSDMkslDA67c7VrUukXii.jpg'
+
+type PortalPhoto = { src: string; alt: string; village: string; date: string; title?: string; detail?: string; purpose?: string }
+type LiveContent = { photos: PortalPhoto[]; visits: PortalPhoto[] }
+
+const extractImageUrls = (description: string) => Array.from(description.matchAll(/https?:\/\/[^\s)]+/g)).map(([url]) => url.replace(/[),]+$/, ''))
+const extractStoragePaths = (description: string) => Array.from(description.matchAll(/storage:\/\/([^\s,]+)/g)).map(([, path]) => path)
+
+async function fetchLiveContent(): Promise<LiveContent> {
+  const { data, error } = await getSupabaseBrowserClient().from('public_issues').select('id, category, village, description, contact_name, created_at').in('category', ['visit_photos', 'announcement']).order('created_at', { ascending: false })
+  if (error) throw error
+  const records = (data ?? []) as Array<{ id: string; category: string; village: string; description: string; created_at: string }>
+  const toPhoto = async (record: (typeof records)[number], index: number): Promise<PortalPhoto> => {
+    const publicUrls = extractImageUrls(record.description ?? '')
+    const storagePaths = extractStoragePaths(record.description ?? '')
+    const signedUrls = await Promise.all(storagePaths.map(async (path) => (await getSupabaseBrowserClient().storage.from('visit-photos').createSignedUrl(path, 3600)).data?.signedUrl))
+    const urls = [...signedUrls.filter((url): url is string => Boolean(url)), ...publicUrls]
+    const lines = (record.description ?? '').split('\\n').map((line) => line.trim()).filter(Boolean)
+    return { src: urls[0] ?? '', alt: lines[0] ?? 'ప్రజా ప్రకటన చిత్రం', village: record.village || 'నార్పల', date: new Intl.DateTimeFormat('te-IN', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(record.created_at)), title: lines[0] ?? 'ప్రజా ప్రకటన', purpose: record.category === 'visit_photos' ? 'ప్రజలతో ముఖాముఖి' : 'ప్రజా సమాచారం', detail: lines.slice(1).filter((line) => !line.startsWith('చిత్రాలు:')).join(' ') || 'ప్రజల కోసం తాజా సమాచారం.' }
+  }
+  const photoRecords = (await Promise.all(records.filter((record) => record.category === 'visit_photos' && (extractImageUrls(record.description ?? '').length > 0 || extractStoragePaths(record.description ?? '').length > 0)).map(toPhoto))).filter((photo) => photo.src)
+  const announcementRecords = await Promise.all(records.filter((record) => record.category === 'announcement').map((record, index) => toPhoto(record, index)))
+  return { photos: photoRecords, visits: [...photoRecords, ...announcementRecords].filter((photo) => photo.src).slice(0, 6) }
+}
 
 const photos = [
   { src: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/WhatsApp%20Image%202026-10-30%20at%2010.22.58%20AM-hh6cybeJo5z92mOvt9xbDOJdPHlxJ8.jpeg', alt: 'గ్రామ ప్రజల సమావేశం', village: 'నార్పల', date: '30 అక్టోబర్ 2026' },
@@ -37,14 +62,17 @@ export default function PublicPortal() {
   const [dark, setDark] = useState(false)
   const [english, setEnglish] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [selectedPhoto, setSelectedPhoto] = useState<(typeof photos)[number] | null>(null)
-  const [selectedVisit, setSelectedVisit] = useState<(typeof visits)[number] | null>(null)
+  const { data: liveContent } = useSWR<LiveContent>('public-content', fetchLiveContent, { refreshInterval: 30000, revalidateOnFocus: true })
+  const [selectedPhoto, setSelectedPhoto] = useState<PortalPhoto | null>(null)
+  const [selectedVisit, setSelectedVisit] = useState<PortalPhoto | (typeof visits)[number] | null>(null)
   const [monthOffset, setMonthOffset] = useState(0)
   const [selectedDay, setSelectedDay] = useState(4)
   const [postSent, setPostSent] = useState(false)
   const [galleryFilter, setGalleryFilter] = useState('అన్ని గ్రామాలు')
   const month = monthOffset === 0 ? 'నవంబర్ 2026' : monthOffset < 0 ? 'అక్టోబర్ 2026' : 'డిసెంబర్ 2026'
-  const filteredPhotos = useMemo(() => galleryFilter === 'అన్ని గ్రామాలు' ? photos : photos.filter((photo) => photo.village === galleryFilter), [galleryFilter])
+  const displayPhotos = liveContent?.photos.length ? liveContent.photos : photos
+  const displayVisits = liveContent?.visits.length ? liveContent.visits : visits
+  const filteredPhotos = useMemo(() => galleryFilter === 'అన్ని గ్రామాలు' ? displayPhotos : displayPhotos.filter((photo) => photo.village === galleryFilter), [displayPhotos, galleryFilter])
   const t = english ? { nav: ['Home', 'Candidate', 'Announcements', 'Information', 'Gallery', 'Meetings', 'Contact'], heroKicker: 'PUBLIC INFORMATION PORTAL', heroTitle: 'Your village. Your voice. Our responsibility.', heroBody: 'Simple, direct and verified information for every family in Narpala constituency.', visits: 'Village visits', gallery: 'Photo gallery', calendar: 'Tomorrow’s plan', issue: 'Share an issue', post: 'Post an update' } : { nav: ['హోమ్', 'అభ్యర్థి వివరాలు', 'ప్రకటనలు', 'ప్రజా సమాచారం', 'ఫోటో గ్యాలరీ', 'సమావేశాలు', 'సంప్రదించండి'], heroKicker: 'మన గ్రామం · ప్రజా సమాచారం', heroTitle: 'మీ గ్రామం. మీ మాట. మన బాధ్యత.', heroBody: 'నార్పల పరిధిలోని ప్రతి కుటుంబానికి సులభమైన భాషలో, నిజమైన ప్రజా సమాచారం.', visits: 'ప్రకటనలు', gallery: 'ఫోటో గ్యాలరీ', calendar: 'రేపటి ప్రయాణం', issue: 'సమస్య చెప్పండి', post: 'ప్రకటన పంపండి' }
 
   return <main className={`portal ${dark ? 'portal-dark' : ''}`}>
@@ -59,7 +87,7 @@ export default function PublicPortal() {
 
     <Reveal><section className="portal-section" id="information"><div className="section-heading-row"><div className="section-intro"><span className="portal-kicker">{english ? 'PUBLIC PRIORITIES' : 'ప్రజా సమాచారం'}</span><h2>{english ? 'What matters in every village.' : 'ప్రతి గ్రామానికి అవసరమైనవి.'}</h2></div><a className="view-all" href="/post">{english ? 'Publish an update' : 'ప్రకటన పంపండి'} <ArrowRight size={15} /></a></div><div className="info-grid">{priorities.map(([title, text], index) => <article className="info-card" key={title}><span className="info-number">0{index + 1}</span><h3>{title}</h3><p>{text}</p><span className="status-pill">{index === 2 ? 'ప్రాధాన్యత' : 'ప్రతిపాదితం'}</span></article>)}</div></section></Reveal>
 
-    <Reveal><section className="portal-section visits-section" id="visits"><div className="section-heading-row"><div className="section-intro"><span className="portal-kicker">{english ? 'FIELD NOTES' : 'క్షేత్రంలో'}</span><h2>{t.visits}</h2><p>{english ? 'Every visit has a date, purpose and public note.' : 'ప్రతి ప్రకటనకు తేదీ, ఉద్దేశం, సమాచారం ఉంటుంది.'}</p></div><a className="view-all" href="#gallery">{t.gallery} <ArrowRight size={15} /></a></div><div className="timeline">{visits.map((visit, index) => <button className="timeline-item" key={`${visit.village}-${visit.date}`} onClick={() => setSelectedVisit(visit)}><span className="timeline-dot">0{index + 1}</span><div className="timeline-image"><img src={visit.image} alt={visit.title} /></div><div className="timeline-content"><span>{visit.date} · {visit.village}</span><h3>{visit.title}</h3><p>{visit.purpose}</p><small>{visit.detail}</small></div><ArrowRight className="timeline-arrow" size={20} /></button>)}</div></section></Reveal>
+    <Reveal><section className="portal-section visits-section" id="visits"><div className="section-heading-row"><div className="section-intro"><span className="portal-kicker">{english ? 'FIELD NOTES' : 'క్షేత్రంలో'}</span><h2>{t.visits}</h2><p>{english ? 'Every visit has a date, purpose and public note.' : 'ప్రతి ప్రకటనకు తేదీ, ఉద్దేశం, సమాచారం ఉంటుంది.'}</p></div><a className="view-all" href="#gallery">{t.gallery} <ArrowRight size={15} /></a></div><div className="timeline">{displayVisits.map((visit, index) => <button className="timeline-item" key={`${visit.village}-${visit.date}`} onClick={() => setSelectedVisit(visit)}><span className="timeline-dot">0{index + 1}</span><div className="timeline-image"><img src={'image' in visit ? visit.image : visit.src} alt={visit.title ?? 'ప్రజా ప్రకటన చిత్రం'} /></div><div className="timeline-content"><span>{visit.date} · {visit.village}</span><h3>{visit.title}</h3><p>{visit.purpose}</p><small>{visit.detail}</small></div><ArrowRight className="timeline-arrow" size={20} /></button>)}</div></section></Reveal>
 
     <Reveal><section className="portal-section gallery-section-new" id="gallery"><div className="section-heading-row"><div className="section-intro"><span className="portal-kicker">{english ? 'FROM THE FIELD' : 'గ్రామాల నుంచి'}</span><h2>{t.gallery}</h2></div><div className="filter-pills">{['అన్ని గ్రామాలు', 'నార్పల'].map((filter) => <button className={galleryFilter === filter ? 'active' : ''} onClick={() => setGalleryFilter(filter)} key={filter}>{filter}</button>)}</div></div><div className="editorial-gallery">{filteredPhotos.map((photo, index) => <button key={photo.src} className={`gallery-photo photo-${index + 1}`} onClick={() => setSelectedPhoto(photo)}><img src={photo.src} alt={photo.alt} /><span>{photo.village} · {photo.date}</span></button>)}</div></section></Reveal>
 
@@ -69,6 +97,6 @@ export default function PublicPortal() {
 
     <footer className="portal-footer"><div className="portal-brand"><span className="fan-mark"><img src={campaignLogo} alt="ఫ్యాన్ ప్రచార లోగో" /></span><span><strong>మన గ్రామం</strong><small>MANA GRAMAM · NAARPALA</small></span></div><p>ప్రజలతో కలిసి, ప్రజల కోసం.<br />మన గ్రామం — మన బాధ్యత.</p><a href="https://wa.me/919999999999"><MessageCircle size={17} /> WhatsApp</a></footer>
     {selectedPhoto && <div className="portal-modal" onClick={() => setSelectedPhoto(null)}><button onClick={() => setSelectedPhoto(null)} aria-label="Close"><X /></button><img src={selectedPhoto.src} alt={selectedPhoto.alt} /><p>{selectedPhoto.village} · {selectedPhoto.date}</p></div>}
-    {selectedVisit && <div className="portal-modal visit-modal-new" onClick={() => setSelectedVisit(null)}><button onClick={() => setSelectedVisit(null)} aria-label="Close"><X /></button><div><img src={selectedVisit.image} alt={selectedVisit.title} /><span>{selectedVisit.date} · {selectedVisit.village}</span><h2>{selectedVisit.title}</h2><p>{selectedVisit.detail}</p></div></div>}
+    {selectedVisit && <div className="portal-modal visit-modal-new" onClick={() => setSelectedVisit(null)}><button onClick={() => setSelectedVisit(null)} aria-label="Close"><X /></button><div><img src={'image' in selectedVisit ? selectedVisit.image : selectedVisit.src} alt={selectedVisit.title ?? 'ప్రజా ప్రకటన చిత్రం'} /><span>{selectedVisit.date} · {selectedVisit.village}</span><h2>{selectedVisit.title}</h2><p>{selectedVisit.detail}</p></div></div>}
   </main>
 }

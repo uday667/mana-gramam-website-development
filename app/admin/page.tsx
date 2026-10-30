@@ -48,8 +48,8 @@ export default function AdminPage() {
 
   async function postUploadedPhotos(form: HTMLFormElement) {
     const data = new FormData(form)
-    const { error } = await (getSupabaseBrowserClient() as any).from('public_issues').insert({ village: String(data.get('village')), category: 'visit_photos', description: `${String(data.get('title'))}\nచిత్రాలు: ${uploadedPhotos.map((photo) => photo.url).join(', ')}`, contact_name: 'Portal team' })
-    setMessage(error ? 'చిత్రాల పోస్ట్ సేవ్ కాలేదు.' : 'ప్రకటన చిత్రాలు ప్రజలకు పోస్ట్ అయ్యాయి.')
+    const { error } = await (getSupabaseBrowserClient() as any).from('public_issues').insert({ village: String(data.get('village')), category: 'visit_photos', description: `${String(data.get('title'))}\nచిత్రాలు: ${uploadedPhotos.map((photo) => photo.url).join(', ')}\nస్టోరేజ్: ${uploadedPhotos.map((photo) => `storage://${photo.path}`).join(', ')}`, contact_name: 'Portal team' })
+    setMessage(error ? 'చిత్రాల పోస్ట్ సేవ్ కాలేదు.' : 'ప్రకటన చిత్రాలు ప్రజలకు పోస్ట్ అయ్యాయి. వెబ్‌సైట్‌లో త్వరలో కనిపిస్తాయి.')
     if (!error) { setPostReady(false); setUploadedPhotos([]); form.reset() }
   }
 
