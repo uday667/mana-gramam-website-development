@@ -78,8 +78,15 @@ button, input, select, textarea { font:inherit; }
   .day-grid { gap:5px; }
   .day-grid button, .calendar-empty { min-height:40px; }
   .event-panel h3 { font-size:21px; }
-  .editorial-gallery { gap:8px; }
-  .gallery-photo { border-radius:12px; }
+  .timeline { gap:14px; }
+  .timeline-item { display:grid; grid-template-columns:1fr; gap:10px; padding:10px; text-align:left; }
+  .timeline-image { width:100%; height:auto; aspect-ratio:4 / 3; border-radius:12px; }
+  .timeline-image img { width:100%; height:100%; object-fit:cover; }
+  .timeline-content { padding:0 4px 4px; }
+  .timeline-content small { display:block; line-height:1.65; }
+  .editorial-gallery { gap:10px; grid-template-columns:1fr 1fr; }
+  .gallery-photo { border-radius:12px; aspect-ratio:1 / 1; min-height:0; }
+  .gallery-photo img { width:100%; height:100%; object-fit:cover; }
   .gallery-photo span { left:8px; right:8px; bottom:8px; font-size:10px; }
 }
 @media (max-width:800px) {
