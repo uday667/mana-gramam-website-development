@@ -54,7 +54,7 @@ export default function PublicPortal() {
   const [dark, setDark] = useState(false)
   const [english, setEnglish] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const { data: liveContent } = useSWR<LiveContent>('public-content', fetchLiveContent, { refreshInterval: 30000, revalidateOnFocus: true })
+  const { data: liveContent } = useSWR<LiveContent>('public-content', fetchLiveContent, { refreshInterval: 0, revalidateOnFocus: false })
   const [selectedPhoto, setSelectedPhoto] = useState<PortalPhoto | null>(null)
   const [selectedVisit, setSelectedVisit] = useState<PortalPhoto | (typeof visits)[number] | null>(null)
   const tomorrow = new Date()
