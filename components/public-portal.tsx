@@ -15,20 +15,27 @@ type LiveContent = { photos: PortalPhoto[]; visits: PortalPhoto[] }
 const extractImageUrls = (description: string) => Array.from(description.matchAll(/https?:\/\/[^\s)]+/g)).map(([url]) => url.replace(/[),]+$/, ''))
 const extractStoragePaths = (description: string) => Array.from(description.matchAll(/storage:\/\/([^\s,]+)/g)).map(([, path]) => path)
 
+type IssueRecord = { id: string; category: string; village: string; description: string; image_paths: string[] | null; created_at: string }
+
+function publicUrlForPath(path: string) {
+  return getSupabaseBrowserClient().storage.from('visit-photos').getPublicUrl(path).data.publicUrl
+}
+
 async function fetchLiveContent(): Promise<LiveContent> {
-  const { data, error } = await getSupabaseBrowserClient().from('public_issues').select('id, category, village, description, contact_name, created_at').in('category', ['visit_photos', 'announcement']).order('created_at', { ascending: false })
+  const { data, error } = await getSupabaseBrowserClient().from('public_issues').select('id, category, village, description, image_paths, contact_name, created_at').in('category', ['visit_photos', 'announcement']).order('created_at', { ascending: false })
   if (error) throw error
-  const records = (data ?? []) as Array<{ id: string; category: string; village: string; description: string; created_at: string }>
-  const toPhoto = async (record: (typeof records)[number], index: number): Promise<PortalPhoto> => {
-    const publicUrls = extractImageUrls(record.description ?? '')
-    const storagePaths = extractStoragePaths(record.description ?? '')
-    const signedUrls = await Promise.all(storagePaths.map(async (path) => (await getSupabaseBrowserClient().storage.from('visit-photos').createSignedUrl(path, 3600)).data?.signedUrl))
-    const urls = [...signedUrls.filter((url): url is string => Boolean(url)), ...publicUrls]
-    const lines = (record.description ?? '').split('\\n').map((line) => line.trim()).filter(Boolean)
-    return { src: urls[0] ?? '', alt: lines[0] ?? 'ప్రజా ప్రకటన చిత్రం', village: record.village || 'నార్పల', date: new Intl.DateTimeFormat('te-IN', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(record.created_at)), title: lines[0] ?? 'ప్రజా ప్రకటన', purpose: record.category === 'visit_photos' ? 'ప్రజలతో ముఖాముఖి' : 'ప్రజా సమాచారం', detail: lines.slice(1).filter((line) => !line.startsWith('చిత్రాలు:')).join(' ') || 'ప్రజల కోసం తాజా సమాచారం.' }
+  const records = (data ?? []) as IssueRecord[]
+  const toPhoto = (record: IssueRecord): PortalPhoto => {
+    const pathUrls = (record.image_paths ?? []).map(publicUrlForPath)
+    const descUrls = extractImageUrls(record.description ?? '')
+    const storageFallbackPaths = extractStoragePaths(record.description ?? '').map(publicUrlForPath)
+    const urls = [...pathUrls, ...descUrls, ...storageFallbackPaths]
+    const lines = (record.description ?? '').split('\n').map((line) => line.trim()).filter(Boolean)
+    const title = lines[0] ?? 'ప్రజా ప్రకటన'
+    return { src: urls[0] ?? '', alt: title, village: record.village || 'నార్పల', date: new Intl.DateTimeFormat('te-IN', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(record.created_at)), title, purpose: record.category === 'visit_photos' ? 'ప్రజలతో ముఖాముఖి' : 'ప్రజా సమాచారం', detail: lines.slice(1).filter((line) => !line.startsWith('చిత్రాలు:')).join(' ') || 'ప్రజల కోసం తాజా సమాచారం.' }
   }
-  const photoRecords = (await Promise.all(records.filter((record) => record.category === 'visit_photos' && (extractImageUrls(record.description ?? '').length > 0 || extractStoragePaths(record.description ?? '').length > 0)).map(toPhoto))).filter((photo) => photo.src)
-  const announcementRecords = await Promise.all(records.filter((record) => record.category === 'announcement').map((record, index) => toPhoto(record, index)))
+  const photoRecords = records.filter((record) => record.category === 'visit_photos').map(toPhoto).filter((photo) => photo.src)
+  const announcementRecords = records.filter((record) => record.category === 'announcement').map(toPhoto)
   return { photos: photoRecords, visits: [...photoRecords, ...announcementRecords].filter((photo) => photo.src).slice(0, 6) }
 }
 

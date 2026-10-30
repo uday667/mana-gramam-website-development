@@ -39,7 +39,7 @@ export default function AdminPage() {
       const path = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '-')}`
       const { error } = await client.storage.from('visit-photos').upload(path, file, { upsert: false })
       if (error) failed = true
-      else { const { data: signed } = await client.storage.from('visit-photos').createSignedUrl(path, 3600); const { data: publicData } = client.storage.from('visit-photos').getPublicUrl(path); uploaded.push({ path, url: signed?.signedUrl ?? publicData.publicUrl }) }
+      else { const { data: publicData } = client.storage.from('visit-photos').getPublicUrl(path); uploaded.push({ path, url: publicData.publicUrl }) }
     }
     setUploadedPhotos(uploaded)
     setUploading(false)
@@ -48,7 +48,7 @@ export default function AdminPage() {
 
   async function postUploadedPhotos(form: HTMLFormElement) {
     const data = new FormData(form)
-    const { error } = await (getSupabaseBrowserClient() as any).from('public_issues').insert({ village: String(data.get('village')), category: 'visit_photos', description: `${String(data.get('title'))}\nచిత్రాలు: ${uploadedPhotos.map((photo) => photo.url).join(', ')}\nస్టోరేజ్: ${uploadedPhotos.map((photo) => `storage://${photo.path}`).join(', ')}`, contact_name: 'Portal team' })
+    const { error } = await (getSupabaseBrowserClient() as any).from('public_issues').insert({ village: String(data.get('village')), category: 'visit_photos', description: String(data.get('title')), image_paths: uploadedPhotos.map((photo) => photo.path), contact_name: 'Portal team' })
     setMessage(error ? 'చిత్రాల పోస్ట్ సేవ్ కాలేదు.' : 'ప్రకటన చిత్రాలు ప్రజలకు పోస్ట్ అయ్యాయి. వెబ్‌సైట్‌లో త్వరలో కనిపిస్తాయి.')
     if (!error) { setPostReady(false); setUploadedPhotos([]); form.reset() }
   }
