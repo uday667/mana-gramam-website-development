@@ -5,7 +5,7 @@ import { useMemo, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { ArrowRight, CheckCircle2, ChevronLeft, ChevronRight, FileText, ImagePlus, Languages, MapPin, Menu, MessageCircle, Moon, ShieldCheck, Sun, Users, X } from 'lucide-react'
 
-const campaignBanner = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Airy%20Blue%20Fan%20Banner%20with%20Namaste%20Portraits-oDTKQlwKySm64uFWQxj9NUnTuZVkUe.png'
+const campaignBanner = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/B.%20Sivananda%20Reddy%20Campaign%20Banner-S6CqjhvWOYTIMBrgQrZEMoLbNhlIN1.png'
 const campaignLogo = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/images%20%283%29-SnlYTvEcjqSDMkslDA67c7VrUukXii.jpg'
 const supportLink = 'https://zptc-yours-sivanandhareddy.github.io/'
 const whatsappLink = 'https://chat.whatsapp.com/IqeoygzHvKaKFlJNN7BwVx'
