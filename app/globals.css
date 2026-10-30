@@ -62,6 +62,7 @@ button, input, select, textarea { font:inherit; }
 .upload-drop input { display:block; width:100%; max-width:100%; font-size:12px; }
 .portal-whatsapp { display:inline-flex; align-items:center; gap:5px; padding:8px 11px; border-radius:999px; color:#fff; background:#258c6e; text-decoration:none; font-size:12px; font-weight:800; }
 .support-ribbon { display:flex; justify-content:flex-end; align-items:center; gap:16px; margin:18px auto 0; max-width:1180px; padding:10px 16px; border:1px solid var(--line); border-radius:16px; background:linear-gradient(100deg,#f8efe0,#eef5ef); }
+.support-message { color:var(--ink); font-weight:700; }
 .support-prompt { padding:10px 15px; border:1px solid #cfe0d5; border-radius:12px; background:#fffdf8; box-shadow:0 6px 16px #18352a12; }
 .support-prompt strong { color:var(--green); }
 .support-ribbon a { display:flex; align-items:center; gap:9px; color:var(--ink); text-decoration:none; font-weight:700; }
