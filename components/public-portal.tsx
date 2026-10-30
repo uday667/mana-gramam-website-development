@@ -3,7 +3,6 @@
 import { motion } from 'framer-motion'
 import { useMemo, useState } from 'react'
 import useSWR from 'swr'
-import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { ArrowRight, CheckCircle2, ChevronLeft, ChevronRight, FileText, ImagePlus, Languages, MapPin, Menu, MessageCircle, Moon, ShieldCheck, Sun, Users, X } from 'lucide-react'
 
 const campaignBanner = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Airy%20Blue%20Fan%20Banner%20with%20Namaste%20Portraits-oDTKQlwKySm64uFWQxj9NUnTuZVkUe.png'
@@ -12,31 +11,14 @@ const campaignLogo = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/im
 type PortalPhoto = { src: string; alt: string; village: string; date: string; title?: string; detail?: string; purpose?: string }
 type LiveContent = { photos: PortalPhoto[]; visits: PortalPhoto[] }
 
-const extractImageUrls = (description: string) => Array.from(description.matchAll(/https?:\/\/[^\s)]+/g)).map(([url]) => url.replace(/[),]+$/, ''))
-const extractStoragePaths = (description: string) => Array.from(description.matchAll(/storage:\/\/([^\s,]+)/g)).map(([, path]) => path)
-
-type IssueRecord = { id: string; category: string; village: string; description: string; image_paths: string[] | null; created_at: string }
-
-function publicUrlForPath(path: string) {
-  return getSupabaseBrowserClient().storage.from('visit-photos').getPublicUrl(path).data.publicUrl
-}
-
 async function fetchLiveContent(): Promise<LiveContent> {
-  const { data, error } = await getSupabaseBrowserClient().from('public_issues').select('id, category, village, description, image_paths, contact_name, created_at').in('category', ['visit_photos', 'announcement']).order('created_at', { ascending: false })
-  if (error) throw error
-  const records = (data ?? []) as IssueRecord[]
-  const toPhoto = (record: IssueRecord): PortalPhoto => {
-    const pathUrls = (record.image_paths ?? []).map(publicUrlForPath)
-    const descUrls = extractImageUrls(record.description ?? '')
-    const storageFallbackPaths = extractStoragePaths(record.description ?? '').map(publicUrlForPath)
-    const urls = [...pathUrls, ...descUrls, ...storageFallbackPaths]
-    const lines = (record.description ?? '').split('\n').map((line) => line.trim()).filter(Boolean)
-    const title = lines[0] ?? 'ప్రజా ప్రకటన'
-    return { src: urls[0] ?? '', alt: title, village: record.village || 'నార్పల', date: new Intl.DateTimeFormat('te-IN', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(record.created_at)), title, purpose: record.category === 'visit_photos' ? 'ప్రజలతో ముఖాముఖి' : 'ప్రజా సమాచారం', detail: lines.slice(1).filter((line) => !line.startsWith('చిత్రాలు:')).join(' ') || 'ప్రజల కోసం తాజా సమాచారం.' }
-  }
-  const photoRecords = records.filter((record) => record.category === 'visit_photos').map(toPhoto).filter((photo) => photo.src)
+  const response = await fetch('/api/public-content', { cache: 'no-store' })
+  if (!response.ok) throw new Error('Unable to load public content')
+  const records = await response.json() as Array<{ category: string; village: string; description: string; created_at: string; title: string; imageUrl: string | null }>
+  const toPhoto = (record: (typeof records)[number]): PortalPhoto => ({ src: record.imageUrl ?? campaignBanner, alt: record.title, village: record.village || 'నార్పల', date: new Intl.DateTimeFormat('te-IN', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(record.created_at)), title: record.title, purpose: record.category === 'visit_photos' ? 'ప్రజలతో ముఖాముఖి' : 'ప్రజా సమాచారం', detail: record.description.split('\n').slice(1).filter((line) => !line.startsWith('స్టోరేజ్:')).join(' ') || 'ప్రజల కోసం తాజా సమాచారం.' })
+  const photoRecords = records.filter((record) => record.category === 'visit_photos').map(toPhoto)
   const announcementRecords = records.filter((record) => record.category === 'announcement').map(toPhoto)
-  return { photos: photoRecords, visits: [...photoRecords, ...announcementRecords].filter((photo) => photo.src).slice(0, 6) }
+  return { photos: photoRecords, visits: [...photoRecords, ...announcementRecords].slice(0, 6) }
 }
 
 const photos = [
@@ -94,7 +76,7 @@ export default function PublicPortal() {
 
     <Reveal><section className="portal-section" id="information"><div className="section-heading-row"><div className="section-intro"><span className="portal-kicker">{english ? 'PUBLIC PRIORITIES' : 'ప్రజా సమాచారం'}</span><h2>{english ? 'What matters in every village.' : 'ప్రతి గ్రామానికి అవసరమైనవి.'}</h2></div><a className="view-all" href="/post">{english ? 'Publish an update' : 'ప్రకటన పంపండి'} <ArrowRight size={15} /></a></div><div className="info-grid">{priorities.map(([title, text], index) => <article className="info-card" key={title}><span className="info-number">0{index + 1}</span><h3>{title}</h3><p>{text}</p><span className="status-pill">{index === 2 ? 'ప్రాధాన్యత' : 'ప్రతిపాదితం'}</span></article>)}</div></section></Reveal>
 
-    <Reveal><section className="portal-section visits-section" id="visits"><div className="section-heading-row"><div className="section-intro"><span className="portal-kicker">{english ? 'FIELD NOTES' : 'క్షేత్రంలో'}</span><h2>{t.visits}</h2><p>{english ? 'Every visit has a date, purpose and public note.' : 'ప్రతి ప్రకటనకు తేదీ, ఉద్దేశం, సమాచారం ఉంటుంది.'}</p></div><a className="view-all" href="#gallery">{t.gallery} <ArrowRight size={15} /></a></div><div className="timeline">{displayVisits.map((visit, index) => <button className="timeline-item" key={`${visit.village}-${visit.date}`} onClick={() => setSelectedVisit(visit)}><span className="timeline-dot">0{index + 1}</span><div className="timeline-image"><img src={'image' in visit ? visit.image : visit.src} alt={visit.title ?? 'ప్రజా ప్రకటన చిత్రం'} /></div><div className="timeline-content"><span>{visit.date} · {visit.village}</span><h3>{visit.title}</h3><p>{visit.purpose}</p><small>{visit.detail}</small></div><ArrowRight className="timeline-arrow" size={20} /></button>)}</div></section></Reveal>
+    <Reveal><section className="portal-section visits-section" id="visits"><div className="section-heading-row"><div className="section-intro"><span className="portal-kicker">{english ? 'FIELD NOTES' : 'క్షేత్రంలో'}</span><h2>{t.visits}</h2><p>{english ? 'Every visit has a date, purpose and public note.' : 'ప్రతి ప్రకటనకు తేదీ, ఉద��దేశం, సమాచారం ఉంటుంది.'}</p></div><a className="view-all" href="#gallery">{t.gallery} <ArrowRight size={15} /></a></div><div className="timeline">{displayVisits.map((visit, index) => <button className="timeline-item" key={`${visit.village}-${visit.date}`} onClick={() => setSelectedVisit(visit)}><span className="timeline-dot">0{index + 1}</span><div className="timeline-image"><img src={'image' in visit ? visit.image : visit.src} alt={visit.title ?? 'ప్రజా ప్రకటన చిత్రం'} /></div><div className="timeline-content"><span>{visit.date} · {visit.village}</span><h3>{visit.title}</h3><p>{visit.purpose}</p><small>{visit.detail}</small></div><ArrowRight className="timeline-arrow" size={20} /></button>)}</div></section></Reveal>
 
     <Reveal><section className="portal-section gallery-section-new" id="gallery"><div className="section-heading-row"><div className="section-intro"><span className="portal-kicker">{english ? 'FROM THE FIELD' : 'గ్రామాల నుంచి'}</span><h2>{t.gallery}</h2></div><div className="filter-pills">{['అన్ని గ్రామాలు', 'నార్పల'].map((filter) => <button className={galleryFilter === filter ? 'active' : ''} onClick={() => setGalleryFilter(filter)} key={filter}>{filter}</button>)}</div></div><div className="editorial-gallery">{filteredPhotos.map((photo, index) => <button key={photo.src} className={`gallery-photo photo-${index + 1}`} onClick={() => setSelectedPhoto(photo)}><img src={photo.src} alt={photo.alt} /><span>{photo.village} · {photo.date}</span></button>)}</div></section></Reveal>
 
